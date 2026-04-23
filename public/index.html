@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Prep Dashboard Pro</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        :root { --bg: #0a0a0a; --blue: #00e5ff; --gold: #ffcc33; --glass: rgba(255, 255, 255, 0.05); }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; gap: 40px; padding: 20px;  overflow-x: hidden; }
+        
+        /* Side Panel - Separated Cards */
+        .side-panel {
+
+            position: fixed; top: 20px; left: 20px; width: 280px; z-index: 10;
+
+            display: flex; flex-direction: column; gap: 20px;
+
+        }
+        .m-card {
+            background: var(--glass); border: 1px solid var(--gold);
+            padding: 20px; border-radius: 15px; backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .daily-card { border-color: var(--blue); }
+        h3 { color: var(--gold); margin: 0 0 12px 0; font-size: 0.85rem; letter-spacing: 1px; text-transform: uppercase; }
+        .m-val { font-size: 1.3rem; font-weight: bold; font-family: monospace; color: #fff; margin: 5px 0; }
+        .picker-row { margin-bottom: 10px; display: flex; gap: 8px; }
+
+        .container { max-width: 500px; margin: 40px auto 0; text-align: center; }
+        .card { background: var(--glass); border: 1px solid rgba(0,229,255,0.2); border-radius: 24px; padding: 30px; margin-bottom: 20px; }
+        
+        .timer-box { position: relative; width: 180px; height: 180px; margin: 20px auto; }
+        svg { transform: rotate(-90deg); width: 180px; height: 180px; }
+        circle { fill: none; stroke-width: 10; stroke-linecap: round; }
+        .bg-c { stroke: rgba(255,255,255,0.05); }
+        .pr-c { stroke: var(--blue); stroke-dasharray: 565; stroke-dashoffset: 565; filter: drop-shadow(0 0 5px var(--blue)); }
+        #time-display { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.2rem; font-weight: bold; }
+
+        input[type="date"], select, button { 
+            background: #111; color: white; border: 1px solid var(--blue); 
+            padding: 8px; border-radius: 6px; font-size: 0.85rem; outline: none;
+        }
+        button { padding: 12px 24px; font-weight: bold; cursor: pointer; transition: 0.3s; width: 100%; margin-top: 10px;}
+        button:hover { background: var(--blue); color: black; box-shadow: 0 0 15px var(--blue); }
+        #doneBtn { border-color: var(--gold); color: var(--gold); display: none; }
+        #doneBtn:hover { background: var(--gold); color: black; box-shadow: 0 0 15px var(--gold); }
+        
+        .sub-report { background: rgba(0, 229, 255, 0.05); border-radius: 12px; padding: 15px; margin-top: 20px; border: 1px dashed var(--blue); }
+
+        /* Custom Modal */
+        #modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92); backdrop-filter: blur(8px);
+            display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal { background: #111; border: 1px solid var(--blue); padding: 30px; border-radius: 20px; max-width: 400px; text-align: center; opacity: 0; transform: translateY(20px); }
+    </style>
+</head>
+<body>
+
+<div id="modal-overlay">
+    <div class="modal" id="custom-modal">
+        <h2 id="modal-title" style="color:var(--blue)">Confirm</h2>
+        <p id="modal-msg"></p>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top: 20px;">
+            <button id="modal-confirm" style="width:auto">CONFIRM</button>
+            <button id="modal-cancel" style="border-color:#444; color:#888; width:auto">CANCEL</button>
+        </div>
+    </div>
+</div>
+
+<div class="side-panel">
+    <div class="m-card">
+        <h3>Month Report</h3>
+        <div class="picker-row">
+            <select id="pick-month" onchange="loadAll()"></select>
+            <select id="pick-year" onchange="loadAll()"></select>
+        </div>
+        <select id="month-sub" onchange="loadAll()" style="width:100%; margin-bottom:10px; border-color:var(--gold)">
+            <option value="All">All Subjects</option>
+            <option>Physics</option><option>Mathematics</option><option>Coding</option><option>Chemistry</option>
+        </select>
+        <div class="m-val" id="all-total">00h 00m 00s</div>
+        <div style="font-size:0.7rem; opacity:0.6;">Monthly Avg: <span id="all-month" style="color:var(--gold)">0</span>m</div>
+    </div>
+
+    <div class="m-card daily-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 style="color:var(--blue); margin:0;">Daily Detail</h3>
+            <button onclick="resetToToday()" style="width:auto; padding:4px 8px; margin:0; font-size:0.7rem; border-color:var(#000); color:var(#000);">TODAY</button>
+        </div>
+        <input type="date" id="pick-date" style="width:90%; margin-bottom:10px;" onchange="loadAll()">
+        <select id="daily-sub" onchange="loadAll()" style="width:100%; margin-bottom:10px;">
+            <option value="All">All Subjects</option>
+            <option>Physics</option><option>Mathematics</option><option>Coding</option><option>Chemistry</option>
+        </select>
+        <div class="m-val" id="daily-sum" style="color:var(--blue)">00h 00m 00s</div>
+        <div id="no-records" style="font-size:0.75rem; color:var(--gold); display:none; margin-top:5px; font-weight:bold;">! NO RECORDS FOUND</div>
+    </div>
+</div>
+
+<div class="container">
+    <h1 style="color:var(--blue); font-weight:900;">STUDY_BUDDY</h1>
+    <div class="card">
+        <select id="subject" onchange="loadSubjectReport()" style="width:100%; margin-bottom:15px; padding:12px;">
+            <option>Physics</option><option>Mathematics</option><option>Coding</option><option>Chemistry</option>
+        </select>
+        
+        <div class="timer-box">
+            <svg><circle class="bg-c" cx="90" cy="90" r="80"></circle><circle id="progress" class="pr-c" cx="90" cy="90" r="80"></circle></svg>
+            <div id="time-display">00:00</div>
+        </div>
+        
+        <div style="display:flex; gap:10px; justify-content: center;">
+            <button id="toggleBtn" onclick="toggle()" style="flex:1">START</button>
+            <button id="doneBtn" onclick="finish()" style="flex:1">COMPLETE</button>
+        </div>
+
+        <div class="sub-report">
+            <span id="report-name" style="color:var(--blue); font-weight:bold; letter-spacing:1px;">Report</span>
+            <div style="display:flex; justify-content: space-around; margin-top:10px; font-size:0.9rem;">
+                <div>Total: <span id="sub-total" style="color:white; font-weight:bold;">0m</span></div>
+                <div>Avg: <span id="sub-avg" style="color:white; font-weight:bold;">0m</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let sec = 0, running = false, interval;
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+    window.onload = () => {
+        const now = new Date();
+        const mSel = document.getElementById('pick-month');
+        const ySel = document.getElementById('pick-year');
+        const dSel = document.getElementById('pick-date');
+
+        months.forEach((m, i) => mSel.options.add(new Option(m, i + 1)));
+        for(let i = 2025; i <= 2030; i++) ySel.options.add(new Option(i, i));
+
+        mSel.value = now.getMonth() + 1;
+        ySel.value = now.getFullYear();
+        dSel.valueAsDate = now;
+
+        loadAll();
+        checkRecovery();
+    };
+
+    function resetToToday() {
+        document.getElementById('pick-date').valueAsDate = new Date();
+        loadAll();
+    }
+
+    function formatFull(min) {
+        let sT = Math.round(min * 60);
+        let h = Math.floor(sT/3600);
+        let m = Math.floor((sT%3600)/60);
+        let s = sT%60;
+        return `${h.toString().padStart(2,'0')}h ${m.toString().padStart(2,'0')}m ${s.toString().padStart(2,'0')}s`;
+    }
+
+    function showM(title, msg, onConfirm, confirmText = "OK", showCancel = true) {
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('modal-msg').innerHTML = msg;
+        document.getElementById('modal-confirm').innerText = confirmText;
+        document.getElementById('modal-overlay').style.display = 'flex';
+        document.getElementById('modal-cancel').style.display = showCancel ? 'block' : 'none';
+        gsap.to("#custom-modal", { opacity: 1, y: 0, duration: 0.4 });
+        document.getElementById('modal-confirm').onclick = () => { closeM(); onConfirm(); };
+        document.getElementById('modal-cancel').onclick = () => closeM();
+    }
+    function closeM() { gsap.to("#custom-modal", { opacity:0, y:20, duration:0.2, onComplete: () => document.getElementById('modal-overlay').style.display='none' }); }
+
+    function toggle() {
+        if (!running) {
+            running = true; 
+            document.getElementById('toggleBtn').innerText = "PAUSE";
+            document.getElementById('doneBtn').style.display = "block";
+            interval = setInterval(() => { sec++; update(); save(); }, 1000);
+        } else {
+            running = false; 
+            document.getElementById('toggleBtn').innerText = "RESUME";
+            clearInterval(interval);
+        }
+    }
+
+    function update() {
+        document.getElementById('time-display').innerText = `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
+        gsap.to("#progress", { strokeDashoffset: 565 - ((sec % 60) / 60 * 565), duration: 0.4 });
+    }
+
+    function save() { localStorage.setItem('prep_backup', JSON.stringify({ sec, sub: document.getElementById('subject').value })); }
+    
+    async function finish() {
+        if (sec < 5) return showM("Too Short", "Session must be > 5s.", () => {}, "OK", false);
+        if (running) toggle();
+
+        const sub = document.getElementById('subject').value;
+        const sessionDisplay = `${Math.floor(sec/60)}m ${sec%60}s`;
+
+        showM("Confirm Save", `Save <b>${sessionDisplay}</b> for <b>${sub}</b>?`, async () => {
+            const res = await fetch('/api/log-session', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ subject: sub, duration: (sec/60).toFixed(2) })
+            });
+
+            if(res.ok) {
+                sec = 0; update();
+                localStorage.removeItem('prep_backup');
+                document.getElementById('toggleBtn').innerText = "START";
+                document.getElementById('doneBtn').style.display = "none";
+                loadAll();
+            }
+        }, "YES, SAVE IT");
+    }
+
+    async function loadAll() {
+        const mSub = document.getElementById('month-sub').value;
+        const month = document.getElementById('pick-month').value;
+        const year = document.getElementById('pick-year').value;
+        const dSub = document.getElementById('daily-sub').value;
+        const dateInput = document.getElementById('pick-date').value;
+
+        // 1. MONTHLY DATA
+        const resMonth = await fetch(`/api/analytics?subject=${mSub}&month=${month}&year=${year}`);
+        const dMonth = await resMonth.json();
+
+        document.getElementById('all-total').innerText = formatFull(dMonth.totalTime || 0);
+        document.getElementById('all-month').innerText = dMonth.monthlyAvg || 0;
+
+        // 2. DAILY DATA (Independent of Month Dropdown)
+        if (dateInput) {
+            const [y, m, d] = dateInput.split('-');
+            const formattedDate = `${d}/${m}/${y}`;
+            const resDaily = await fetch(`/api/analytics?subject=${dSub}&date=${formattedDate}&month=${parseInt(m)}&year=${y}`);
+            const dDaily = await resDaily.json();
+
+            const noRec = document.getElementById('no-records');
+            const dailyVal = document.getElementById('daily-sum');
+
+            if (dDaily.noFile || dDaily.dailySum == 0) {
+                noRec.style.display = "block";
+                dailyVal.innerText = "00h 00m 00s";
+            } else {
+                noRec.style.display = "none";
+                dailyVal.innerText = formatFull(dDaily.dailySum);
+            }
+        }
+        loadSubjectReport();
+    }
+
+    async function loadSubjectReport() {
+        const activeSub = document.getElementById('subject').value;
+        const now = new Date();
+        const res = await fetch(`/api/analytics?subject=${activeSub}&month=${now.getMonth()+1}&year=${now.getFullYear()}`);
+        const d = await res.json();
+        document.getElementById('report-name').innerText = `${activeSub} (Current Month)`;
+        document.getElementById('sub-total').innerText = (d.totalTime || 0) + "m";
+        document.getElementById('sub-avg').innerText = (d.monthlyAvg || 0) + "m";
+    }
+
+    function checkRecovery() {
+        const b = localStorage.getItem('prep_backup');
+        if(b) {
+            const data = JSON.parse(b);
+            showM("Recovery", `Resume unfinished <b>${data.sub}</b> session?`, () => {
+                sec = data.sec; document.getElementById('subject').value = data.sub;
+                update(); toggle();
+            }, "RESUME");
+        }
+    }
+</script>
+</body>
+</html>
