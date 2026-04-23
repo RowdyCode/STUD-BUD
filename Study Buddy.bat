@@ -2,8 +2,8 @@
 TITLE StudyBuddy Launcher
 COLOR 0B
 
-:: Navigate to the project directory
-cd /d "C:\Users\Rowdy\Desktop\StudyBuddy"
+:: Navigate to the project directory --> "location of your folder of stud-bud"
+cd /d ""
 
 :: Check if node_modules exists, if not, try to install
 if not exist node_modules (
